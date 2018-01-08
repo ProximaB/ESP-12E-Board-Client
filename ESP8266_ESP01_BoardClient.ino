@@ -22,8 +22,11 @@ WebSocketsClient webSocket;
 const char* ssid = "TP-LINK_A1A5A5";
 const char* password = "28387756";
 
-const char* host = "192.168.0.106";
-const char* port = "57493";
+//const char* host = "192.168.0.106";
+const char* host = "192.168.137.1";
+
+
+const uint  port = 57493;
 
 const int led = 2;
 const int _switch = 13;
@@ -111,6 +114,7 @@ void setup() {
 	pinMode(_switch, OUTPUT);
 	pinMode(button, INPUT);
 	pinMode(button2, INPUT);
+
 	digitalWrite(_switch, 1);
 	digitalWrite(led, 1);
 
@@ -129,16 +133,21 @@ void setup() {
 		delay(1000);
 	}
 
-	WiFiMulti.addAP("TP-LINK_A1A5A5", "28387756");
+	WiFiMulti.addAP(ssid, password);
 
 	//WiFi.disconnect();
 	while (WiFiMulti.run() != WL_CONNECTED) {
-		delay(100);	
+		for (int i = 1; i <= 7; i++)
+		{
+			digitalWrite(led, i%2); //light when 0
+			delay(80);
+		}
+		delay(300);
 	}
 	Serial.print("Trying connect to server.\n");
 	//USE_SERIAL.printf("Trying connect to server.\n");
 	// server address, port and URL
-	webSocket.begin("192.168.0.106", 57493, "/notifications");
+	webSocket.begin(host, port, "/notifications");
 
 	// event handler
 	webSocket.onEvent(webSocketEvent);
@@ -152,6 +161,51 @@ void setup() {
 
 }
 
+void postStatus(int switchId, String state)
+{
+	WiFiClient client;
+
+	if (client.connect(host, port))
+	{
+		Serial.print("postStatus: wifi connected! \n");
+
+		WiFiClient client;
+
+		Serial.printf("\n[Connecting to %s ... ", host);
+		if (client.connect(host, port))
+		{
+			Serial.println("connected]");
+
+			Serial.println("[Sending a request]");
+			client.print(String("PUT /api/Switches/" + switchId + '/' + state) + " HTTP/1.1\r\n" +
+				"Host: " + host + ":" + port + "\r\n" +
+				"Cache-Control: no-cache\r\n" +
+				"Content-Type: application/json\r\n" +
+				"Content-Length: 0\r\n" +
+				"Connection: close\r\n" +
+				"\r\n"
+			);
+
+			Serial.println("[Response:]");
+			while (client.connected())
+			{
+				if (client.available())
+				{
+					String line = client.readStringUntil('\n');
+					Serial.println(line);
+				}
+			}
+			client.stop();
+			Serial.println("\n[Disconnected]");
+		}
+		else
+		{
+			Serial.println("connection failed!]");
+			client.stop();
+		}
+}
+
+
 int _button, _button2;
 
 void loop() {
@@ -164,8 +218,9 @@ void loop() {
 	if (digitalRead(button) == 1 && _button == 0) {
 		digitalWrite(led, 0);
 		digitalWrite(_switch, 1);
-		webSocket.sendTXT("8:ON");
 		Serial.print("Button1 ON");
+		putStatus(8, "ON");
+		//webSocket.sendTXT("8:ON")
 	}
 	else if(digitalRead(button2) == 1 && _button2 == 0)
 	{
@@ -173,7 +228,7 @@ void loop() {
 		digitalWrite(_switch, 0);
 		webSocket.sendTXT("8:OFF");
 		Serial.print("Button2 OFF");
+		putStatus(8, "OFF");
 	}
-	
 	
 }
