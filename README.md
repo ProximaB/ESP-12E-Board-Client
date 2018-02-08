@@ -1,2 +1,3 @@
 # ESP-12E-Board-Client
-Board Client for ESP-12E modules, based on events.
+!! Smart Lighting Control Systems
+This is board client software for esp8266.
